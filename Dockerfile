@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8055
 
-CMD ["python3", "app.py"]
+CMD ["python3", "main.py"]
