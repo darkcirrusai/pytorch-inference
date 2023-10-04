@@ -1,0 +1,7 @@
+# folders
+.idea
+.venv
+
+# files
+*.pth
+*.jpg
