@@ -1,0 +1,28 @@
+{
+  "categories": [
+    {
+      "id": 0,
+      "name": "bha_data"
+    },
+    {
+      "id": 1,
+      "name": "bit_data"
+    },
+    {
+      "id": 2,
+      "name": "formation"
+    },
+    {
+      "id": 3,
+      "name": "operation_summary"
+    },
+    {
+      "id": 4,
+      "name": "survey"
+    },
+    {
+      "id": 5,
+      "name": "well_data"
+    }
+  ]
+}
