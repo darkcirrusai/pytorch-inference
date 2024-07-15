@@ -21,7 +21,7 @@ def load_model(model_path):
     num_classes = 6
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
     return model
 
@@ -60,6 +60,33 @@ def run_inference_max_score(model,image_tensor):
         "bbox": predictions[0]["boxes"][max_score_index].tolist(),
         "score": max_score
     }]
+
+
+def crop_and_save_image(image_tensor, bbox, input_filename):
+    """
+    Crop the image based on the bounding box and save it.
+    Add 10% to the height of the cropped area.
+    """
+    # Convert tensor to PIL Image
+    image = T.ToPILImage()(image_tensor.squeeze(0))
+    
+    # Unpack bbox coordinates
+    x1, y1, x2, y2 = bbox
+    
+    # Calculate 10% of the height
+    height_increase = (y2 - y1) * 0.15
+    
+    # Adjust y coordinates
+    y1 = max(0, y1 - height_increase / 2)
+    y2 = min(image.height, y2 + height_increase / 2)
+    
+    # Crop the image
+    cropped_image = image.crop((x1, y1, x2, y2))
+    
+    # Save the cropped image
+    output_path = os.path.join('saved_images', f'{input_filename}_cropped.jpg')
+    cropped_image.save(output_path)
+    logger.info(f"Cropped image saved as: {output_path}")
 
 
 def main_inference(test_image_path):
@@ -109,5 +136,8 @@ def main_inference(test_image_path):
         logger.error("No predictions made")
         return None
     else:
+        # Crop and save the image based on the bounding box
+        crop_and_save_image(local_image_tensor, model_predictions[0]["bbox"], input_filename)
+        
         # Return label name and coordinates
         return model_predictions[0]["label_name"], model_predictions[0]["bbox"]
