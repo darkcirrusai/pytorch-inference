@@ -31,9 +31,9 @@ def predict(image: Dict[str, str] = Body(),):
     # convert base64 to jpeg
     convert_b64_jpeg(image["images"], save_path=saved_image_path)
 
-    box = main_inference(test_image_path=saved_image_path)
+    label, box = main_inference(test_image_path=saved_image_path)
 
-    return {"gauge_location": box}
+    return {label: box}
 
 
 if __name__ == '__main__':

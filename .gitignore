@@ -5,3 +5,4 @@
 # files
 *.pth
 *.jpg
+__pycache__

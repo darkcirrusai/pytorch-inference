@@ -5,6 +5,7 @@ import requests
 import os
 import base64
 
+
 def test_prediction_api():
     # Directory containing test images
     test_images_dir = "test_images"
@@ -22,7 +23,7 @@ def test_prediction_api():
                                          json={"images": base64_image})
                 
                 print(response.json())
-                break  # Only process the first image
+
 
 if __name__ == "__main__":
     test_prediction_api()
