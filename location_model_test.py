@@ -8,8 +8,11 @@ from loguru import logger
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor # noqa
 from torchvision.utils import draw_bounding_boxes
+import json
+import os
 
 local_model_path = "trained_models/ddr_location_detect.pth"
+coco_classes_path = "trained_models/CoCoClasses.json"
 
 
 def load_model(model_path):
@@ -29,6 +32,16 @@ def preprocess_image(image_path):
     transform = T.Compose([T.ToTensor()])
     img = transform(img)
     return img.unsqueeze(0)
+
+
+def load_coco_classes(json_path):
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    return {category['id']: category['name'] for category in data['categories']}
+
+
+def get_label_name(label_id, coco_classes):
+    return coco_classes.get(label_id, f"Unknown label: {label_id}")
 
 
 def run_inference_max_score(model,image_tensor):
@@ -53,8 +66,9 @@ def main_inference(test_image_path):
     """
     Main inference loop function
     """
-    # Load model
+    # Load model and COCO classes
     local_model = load_model(model_path=local_model_path)
+    coco_classes = load_coco_classes(coco_classes_path)
 
     # Preprocess image
     local_image_tensor = preprocess_image(image_path=test_image_path)
@@ -67,6 +81,10 @@ def main_inference(test_image_path):
         logger.error("No predictions made")
         return None, None
 
+    # Map numeric label to name
+    for pred in model_predictions:
+        pred["label_name"] = get_label_name(pred["label"], coco_classes)
+
     box_tensors = [torch.tensor(pred["bbox"]) for pred in model_predictions]
 
     # plot bounding boxes
@@ -74,17 +92,22 @@ def main_inference(test_image_path):
 
     result_image = draw_bounding_boxes(local_image_tensor.squeeze(0).mul(255).byte(),
                                        boxes=boxes,
-                                       labels=[str(pred["label"]) for pred in model_predictions],
+                                       labels=[pred["label_name"] for pred in model_predictions],
                                        colors="red",
                                        width=4)
 
-    # save image
+    # Get the input image filename without extension
+    input_filename = os.path.splitext(os.path.basename(test_image_path))[0]
+    
+    # Save image with the input filename
     result_image_pil = T.ToPILImage()(result_image)
-    result_image_pil.save('saved_images/annotated_image.jpg')
+    output_path = os.path.join('saved_images', f'{input_filename}_annotated.jpg')
+    result_image_pil.save(output_path)
+    logger.info(f"Annotated image saved as: {output_path}")
 
     if len(model_predictions) == 0:
         logger.error("No predictions made")
         return None
     else:
-        # Return list of coordinates
-        return model_predictions[0]["label"], model_predictions[0]["bbox"]
+        # Return label name and coordinates
+        return model_predictions[0]["label_name"], model_predictions[0]["bbox"]
