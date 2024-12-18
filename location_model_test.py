@@ -44,9 +44,11 @@ def get_label_name(label_id, coco_classes):
     return coco_classes.get(label_id, f"Unknown label: {label_id}")
 
 
-def run_inference_max_score(model,image_tensor):
+def run_inference_max_score(model, image_tensor):
     with torch.no_grad():
         predictions = model(image_tensor)
+
+    print(predictions)
 
     try:
         max_score_index = torch.argmax(predictions[0]["scores"]).item()
@@ -89,6 +91,30 @@ def crop_and_save_image(image_tensor, bbox, input_filename):
     logger.info(f"Cropped image saved as: {output_path}")
 
 
+def run_inference_threshold(model, image_tensor, confidence_threshold=0.4):
+    with torch.no_grad():
+        predictions = model(image_tensor)
+
+    try:
+        # Get indices of all predictions above threshold
+        scores = predictions[0]["scores"]
+        above_threshold = scores >= confidence_threshold
+        
+        # If no predictions above threshold, return empty list
+        if not torch.any(above_threshold):
+            return []
+
+        return [{
+            "label": predictions[0]["labels"][i].item(),
+            "bbox": predictions[0]["boxes"][i].tolist(),
+            "score": predictions[0]["scores"][i].item()
+        } for i in range(len(scores)) if scores[i] >= confidence_threshold]
+        
+    except IndexError as e:
+        logger.error(f"Error during inference: {e}")
+        return []
+
+
 def main_inference(test_image_path):
     """
     Main inference loop function
@@ -101,9 +127,10 @@ def main_inference(test_image_path):
     local_image_tensor = preprocess_image(image_path=test_image_path)
 
     # Get the prediction with the highest score
-    model_predictions = run_inference_max_score(model=local_model,
-                                                image_tensor=local_image_tensor)
-    
+    model_predictions = run_inference_threshold(model=local_model,
+                                                image_tensor=local_image_tensor,
+                                                confidence_threshold=0.4)
+
     if model_predictions is None:
         logger.error("No predictions made")
         return None, None
@@ -115,29 +142,30 @@ def main_inference(test_image_path):
     box_tensors = [torch.tensor(pred["bbox"]) for pred in model_predictions]
 
     # plot bounding boxes
-    boxes = torch.stack(box_tensors, dim=0)
+    if len(model_predictions) > 0:
+        boxes = torch.stack(box_tensors, dim=0)
 
-    result_image = draw_bounding_boxes(local_image_tensor.squeeze(0).mul(255).byte(),
-                                       boxes=boxes,
-                                       labels=[pred["label_name"] for pred in model_predictions],
-                                       colors="red",
-                                       width=4)
+        result_image = draw_bounding_boxes(local_image_tensor.squeeze(0).mul(255).byte(),
+                                           boxes=boxes,
+                                           labels=[pred["label_name"] for pred in model_predictions],
+                                           colors="red",
+                                           width=4)
 
-    # Get the input image filename without extension
-    input_filename = os.path.splitext(os.path.basename(test_image_path))[0]
-    
-    # Save image with the input filename
-    result_image_pil = T.ToPILImage()(result_image)
-    output_path = os.path.join('saved_images', f'{input_filename}_annotated.jpg')
-    result_image_pil.save(output_path)
-    logger.info(f"Annotated image saved as: {output_path}")
+        # Get the input image filename without extension
+        input_filename = os.path.splitext(os.path.basename(test_image_path))[0]
+        
+        # Save image with the input filename
+        result_image_pil = T.ToPILImage()(result_image)
+        output_path = os.path.join('saved_images', f'{input_filename}_annotated.jpg')
+        result_image_pil.save(output_path)
+        logger.info(f"Annotated image saved as: {output_path}")
 
-    if len(model_predictions) == 0:
-        logger.error("No predictions made")
-        return None
-    else:
         # Crop and save the image based on the bounding box
         crop_and_save_image(local_image_tensor, model_predictions[0]["bbox"], input_filename)
         
         # Return label name and coordinates
-        return model_predictions[0]["label_name"], model_predictions[0]["bbox"]
+        return model_predictions
+
+    else:
+        logger.error("No predictions made")
+        return None

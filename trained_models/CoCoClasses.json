@@ -14,14 +14,18 @@
     },
     {
       "id": 3,
-      "name": "operation_summary"
+      "name": "mud_data"
     },
     {
       "id": 4,
-      "name": "survey"
+      "name": "operation_summary"
     },
     {
       "id": 5,
+      "name": "survey"
+    },
+    {
+      "id": 6,
       "name": "well_data"
     }
   ]

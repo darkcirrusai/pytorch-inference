@@ -11,7 +11,7 @@ def test_prediction_api():
     test_images_dir = "test_images"
     
     # Get the first image from the test_images folder
-    for filename in os.listdir(test_images_dir)[3:4]:
+    for filename in os.listdir(test_images_dir):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             file_path = os.path.join(test_images_dir, filename)
             with open(file_path, "rb") as image_file:

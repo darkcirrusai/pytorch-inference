@@ -31,9 +31,15 @@ def predict(image: Dict[str, str] = Body(),):
     # convert base64 to jpeg
     convert_b64_jpeg(image["images"], save_path=saved_image_path)
 
-    label, box = main_inference(test_image_path=saved_image_path)
+    results = main_inference(test_image_path=saved_image_path)
+    label_dict = {}
 
-    return {label: box}
+    if results is not None:
+        for result in results:
+            label_dict[result["label_name"]] = result["bbox"]
+        return label_dict
+    else:
+        return {"error": "No predictions made"}
 
 
 if __name__ == '__main__':
